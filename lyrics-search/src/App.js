@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import SearchBar from './components/SearchBar';
+import { searchSongs, getSongLyrics } from './api/lyricsApi';
 import SongList from './components/SongList';
 import SongDetails from './components/SongDetails';
-import { searchLyrics, getLyricsDetails } from './api/lyricsApi';
 
 function App() {
     const [songs, setSongs] = useState([]);
@@ -10,8 +9,14 @@ function App() {
 
     const handleSearch = async (query) => {
         try {
-            const results = await searchLyrics(query);
-            setSongs(results.data); // Adapte cette ligne selon la structure de l'API.
+            const results = await searchSongs(query);
+            setSongs(results.map(song => ({
+                id: song.id,
+                title: song.title,
+                artist: song.artist.name,
+                album: song.album.title,
+                cover: song.album.cover_medium,
+            })));
         } catch (error) {
             console.error("Erreur lors de la recherche :", error);
         }
@@ -19,22 +24,30 @@ function App() {
 
     const handleSongSelect = async (song) => {
         try {
-            const details = await getLyricsDetails(song.artist, song.title);
-            setSelectedSong({ ...song, lyrics: details.lyrics });
+            const lyrics = await getSongLyrics(song.artist, song.title);
+            setSelectedSong({
+                ...song,
+                lyrics,
+            });
         } catch (error) {
-            console.error("Erreur lors de la récupération des détails :", error);
+            console.error("Erreur lors de la récupération des paroles :", error);
         }
     };
 
-    const handleBack = () => {
-        setSelectedSong(null);
-    };
-
     return (
-        <div className="App container mx-auto p-4">
-            <SearchBar onSearch={handleSearch} />
-            {!selectedSong && <SongList songs={songs} onSelect={handleSongSelect} />}
-            {selectedSong && <SongDetails song={selectedSong} onBack={handleBack} />}
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Lyrics Finder</h1>
+            <input
+                type="text"
+                placeholder="Rechercher une chanson..."
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch(e.target.value)}
+                className="border p-2 w-full mb-4"
+            />
+            {selectedSong ? (
+                <SongDetails song={selectedSong} onBack={() => setSelectedSong(null)} />
+            ) : (
+                <SongList songs={songs} onSelect={handleSongSelect} />
+            )}
         </div>
     );
 }
